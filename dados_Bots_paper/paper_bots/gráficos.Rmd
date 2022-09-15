@@ -302,12 +302,6 @@ unique(bibliographic2$assunto.central.do.paper.TÍTULO)
 
 ```
 
-```{r}
-
-```
-
-
-
 
 
 

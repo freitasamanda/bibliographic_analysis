@@ -1,0 +1,73 @@
+```{r}
+library(readxl)
+library(readr)
+library(tidylog)
+library(tidyverse)
+library(DT)
+library(knitr)
+library(kableExtra)
+library(wordcloud)
+library(tm)
+library(tidytext)
+library(textstem)
+library(lexiconPT)
+```
+
+Importando
+```{r}
+dados_scopus <- read.csv("dados_SNA_paper/scopus/scopus.csv")
+```
+
+Renomeando variáveis
+```{r}
+head(dados_scopus)
+colnames(dados_scopus)
+
+unique(dados_scopus$Language.of.Original.Document)
+unique(dados_scopus$Document.Type)
+unique(dados_scopus$Publication.Stage)
+unique(dados_scopus$Source)
+
+
+#removing columns with only one value and not useful columns
+dados <- 
+  dados_scopus %>% 
+  select(-Document.Type, -Source, -Publication.Stage, -Open.Access, -Page.start, -Page.end, -Page.count)
+
+head(dados)
+
+```
+
+
+```{r}
+arrange(dados, -Cited.by)
+
+summary(dados$Cited.by)
+
+dados_min10cit <- 
+  dados %>% 
+  filter(Cited.by > 10) %>% 
+  arrange(-Cited.by)
+
+head(dados_min10cit)
+dim(dados_min10cit)
+```
+
+1- gráfico com os anos de publicação
+
+```{r}
+
+```
+
+
+
+
+
+2- gráfico com a quantidade de publicações por área
+3- gráfico com os principais journals
+4 - Artigos com mais de 10 citações
+6 - Keywords mais usadas
+
+
+
+Wordcloud
