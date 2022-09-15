@@ -1,5 +1,4 @@
 ```{r}
-library(readxl)
 library(readr)
 library(tidylog)
 library(tidyverse)
@@ -8,9 +7,10 @@ library(knitr)
 library(kableExtra)
 library(wordcloud)
 library(tm)
-library(tidytext)
 library(textstem)
 library(lexiconPT)
+#install.packages("viridis")
+library(viridis)
 ```
 
 Importando
@@ -23,11 +23,10 @@ Renomeando variáveis
 head(dados_scopus)
 colnames(dados_scopus)
 
-unique(dados_scopus$Language.of.Original.Document)
-unique(dados_scopus$Document.Type)
-unique(dados_scopus$Publication.Stage)
-unique(dados_scopus$Source)
-
+#unique(dados_scopus$Language.of.Original.Document)
+#unique(dados_scopus$Document.Type)
+#unique(dados_scopus$Publication.Stage)
+#unique(dados_scopus$Source)
 
 #removing columns with only one value and not useful columns
 dados <- 
@@ -39,8 +38,104 @@ head(dados)
 ```
 
 
+1- gráfico com os anos de publicação
 ```{r}
-arrange(dados, -Cited.by)
+colnames(dados)
+head(dados)
+```
+
+```{r}
+publication_year_graph <- 
+dados %>% 
+  group_by(Year) %>% 
+  tally() %>% 
+  arrange(Year)
+
+publication_year_graph
+```
+
+```{r}
+write.csv(publication_year_graph, "dados_SNA_paper/scopus/tables/publication_year_table.csv")
+```
+
+```{r}
+publication_year_graph %>% 
+  ggplot() +
+geom_line(aes(x=Year, y=n), group=1) +
+  ggtitle("Publications per year") +
+   theme(plot.title = element_text(size = 14, face = "bold", hjust = 0.5)) +
+  labs(x = "Year of Publication", y = "")
+```
+
+```{r}
+ggsave("dados_SNA_paper/scopus/images/publications_per_year.png")
+```
+
+
+2- gráfico affiliatiosn
+```{r}
+dados_Affiliations <- read.csv("dados_SNA_paper/scopus/Scopus-835-Analyze-Affiliation.csv")
+```
+
+```{r}
+most_prominent_institutions <-  
+dados_Affiliations %>% 
+  top_n(10) %>%
+  arrange(-n) %>% 
+  ggplot() + 
+  geom_col(aes(x = fct_reorder(afilliation, -n), y = n, fill = fct_reorder(afilliation, -n))) +
+  ggtitle("Most Prominent Institutions") +
+  theme(plot.title = element_text(size = 14, face = "bold", hjust = -0.6),
+        axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.y = element_blank(),
+        ) +
+  labs(y = "publications", fill = "Institutions", x = " ") +
+  scale_color_viridis(option = "D", discrete = T) +
+  scale_fill_viridis(discrete = TRUE) +
+  theme_minimal()
+
+
+most_prominent_institutions
+``` 
+```{r}
+ggsave("dados_SNA_paper/scopus/images/most_prominent_institutions.png")
+```
+
+
+3- gráfico com os principais journals
+
+```{r}
+dados %>% 
+  group_by(Source.title) %>% 
+  tally() %>% 
+  arrange(-n) %>% 
+  top_n(10) %>% 
+  ggplot() + 
+  geom_col(aes(x = fct_reorder(Source.title, -n), y = n, fill = fct_reorder(Source.title, -n))) +
+  ggtitle("Most Prominent Journals") +
+  theme(plot.title = element_text(size = 14, face = "bold", hjust = -0.6),
+        axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.y = element_blank(),
+        ) +
+  labs(y = "publications", fill = "Journals", x = "") +
+  scale_color_viridis(option = "D", discrete = T) +
+  scale_fill_viridis(discrete = TRUE) +
+  theme_minimal()
+```
+
+```{r}
+ggsave("dados_SNA_paper/scopus/images/most_prominent_journals.png")
+```
+
+
+4 - Artigos com mais de 10 citações
+
+```{r}
+#arrange(dados, -Cited.by)
 
 summary(dados$Cited.by)
 
@@ -51,23 +146,42 @@ dados_min10cit <-
 
 head(dados_min10cit)
 dim(dados_min10cit)
+#87 articles
+#salvando para AC:
+write.csv(dados_min10cit, "dados_SNA_paper/scopus/dados_10_cits.csv")
 ```
 
-1- gráfico com os anos de publicação
+
+7 - Keywords mais usadas
+```{r}
+keywords <- 
+  dados$Author.Keywords
+```
 
 ```{r}
+words_to_remove <- c("")
+```
 
+```{r}
+keywords2 <- removeWords(keywords, words_to_remove)
+```
+
+Wordcloud
+```{r}
+keywords %>% 
+  wordcloud(min.freq = 3)
+	
 ```
 
 
+```{r}
+only_social_sciences_top10_interdisc <- 
+    only_social_sciences_top10 %>% 
+    filter(research_areas == "Interdisciplinary - Social Sciences and STEM fields")
 
+keywords_interd <- only_social_sciences_top10_interdisc$author_keywords
 
+keywords_interd <- removeWords(keywords_interd, words_to_remove)
+    
+```
 
-2- gráfico com a quantidade de publicações por área
-3- gráfico com os principais journals
-4 - Artigos com mais de 10 citações
-6 - Keywords mais usadas
-
-
-
-Wordcloud
