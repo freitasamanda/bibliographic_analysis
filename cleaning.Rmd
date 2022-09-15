@@ -156,6 +156,10 @@ write.csv(dados_min10cit, "dados_SNA_paper/scopus/dados_10_cits.csv")
 ```{r}
 keywords <- 
   dados$Author.Keywords
+
+keywords
+
+write.csv(keywords, "keywords.csv")
 ```
 
 ```{r}
@@ -169,7 +173,7 @@ keywords2 <- removeWords(keywords, words_to_remove)
 Wordcloud
 ```{r}
 keywords %>% 
-  wordcloud(min.freq = 3)
+  wordcloud(min.freq = 5)
 	
 ```
 
