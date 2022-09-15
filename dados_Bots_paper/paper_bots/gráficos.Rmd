@@ -1,0 +1,342 @@
+```{r}
+# install.packages("tidytext")
+# install.packages("textstem")
+# install.packages("lexiconPT")#install.packages("wordcloud")
+#install.packages("tm")
+```
+
+```{r}
+library(readxl)
+library(readr)
+library(tidylog)
+library(tidyverse)
+library(DT)
+library(knitr)
+library(kableExtra)
+library(wordcloud)
+library(tm)
+library(tidytext)
+library(textstem)
+library(lexiconPT)
+```
+
+```{r}
+savedrecs <- read_excel("savedrecs.xls", 
+    sheet = "savedrecs")
+```
+
+```{r}
+data_full <- 
+  savedrecs %>% 
+  rename(Citations = "Times Cited All Databases") %>% 
+  select("Article Title", "Authors", "Source Title", "Author Keywords", "Language", Citations, "Publication Year", "Research Areas", "DOI Link", "DOI" ) %>% 
+  rename(article_title = "Article Title",
+         source_title = "Source Title",
+         author_keywords = "Author Keywords",
+         publication_year = "Publication Year",
+         language = "Language",
+         citations = Citations,
+         authors = Authors,
+         research_areas = "Research Areas",
+         doi_link = "DOI Link")
+```
+
+1- gráfico com os anos de publicação
+
+```{r}
+publication_year_graph <- 
+data_full %>% 
+  group_by(publication_year) %>% 
+  tally() %>% 
+  arrange(publication_year) %>% 
+  slice(-16)
+```
+
+```{r}
+  publication_year_graph  %>% 
+  kable(caption = "Publicações por ano", col.names = c("Ano de publicação", "n"))
+```
+
+```{r}
+write.csv(publication_year_graph, "publication_year_table.csv")
+```
+
+
+```{r}
+publication_year_graph %>% 
+  ggplot() +
+geom_line(aes(x=publication_year, y=n), group=1) +
+  ggtitle("Publications per year") +
+   theme(plot.title = element_text(size = 14, face = "bold", hjust = 0.5)) +
+  labs(x = "Year of Publication", y = "")
+```
+
+```{r}
+ggsave("publications_per_year.png")
+```
+
+2- gráfico com a quantidade de publicações por área
+
+primeiro vou juntar algumas das áreas:
+```{r}
+research_areas_graph <- 
+data_full %>% 
+  group_by(research_areas) %>% 
+  tally() %>% 
+  arrange(-n)
+```
+
+```{r}
+Computer_Science_and_STEM_fields <- c("Computer Science","Computer Science; Engineering","Computer Science; Telecommunications","Computer Science; Engineering; Telecommunications","Information Science & Library Science","Computer Science; Information Science & Library Science","Engineering; Telecommunications","Computer Science; Robotics","Automation & Control Systems; Computer Science; Telecommunications","Chemistry; Computer Science","Computer Science; Engineering; Mathematics","Computer Science; Engineering; Optics","Computer Science; Engineering; Physics","Computer Science; Engineering; Robotics","Telecommunications")
+
+Social_Sciences_and_Communication <- c("Communication","Government & Law","Business & Economics","Social Sciences - Other Topics","Communication; Government & Law","Psychology","Communication; Information Science & Library Science","International Relations","International Relations; Government & Law","Sociology","Business & Economics; Communication","Communication; Education & Educational Research","Communication; Social Issues; Psychology","Communication; Social Sciences - Other Topics","Communication; Sociology","Cultural Studies; Communication","Government & Law; Public Administration")
+
+Art_and_Humanities <- c("Arts & Humanities - Other Topics","Education & Educational Research","Linguistics","Art","Literature","Arts & Humanities - Other Topics; Cultural Studies","Communication; Film, Radio & Television","Cultural Studies","Cultural Studies; Linguistics; Literature","Film, Radio & Television; History","Geography")
+
+
+Interdisciplinary_Social_Sciences_and_STEM_fields <-  c("Mathematical Methods In Social Sciences","Computer Science; Information Science & Library Science; Social Sciences - Other Topics","Computer Science; Communication; Psychology","Computer Science; Communication; Social Issues","Computer Science; Mathematics; Mathematical Methods In Social Sciences","Computer Science; Mathematical Methods In Social Sciences; Social Sciences - Other Topics", "Computer Science; Education & Educational Research","Computer Science; Information Science & Library Science; Business & Economics","Computer Science; Linguistics","Mathematics; Mathematical Methods In Social Sciences","Communication; Computer Science","Computer Science; Biomedical Social Sciences","Computer Science; Communication; Social Sciences - Other Topics","Computer Science; Criminology & Penology","Computer Science; Education & Educational Research; Engineering","Computer Science; Government & Law","Computer Science; International Relations","Computer Science; Social Issues; Social Sciences - Other Topics")
+```
+
+```{r}
+research_areas_graph2 <- 
+  research_areas_graph %>% 
+  mutate(research_areas = 
+           case_when(
+             research_areas %in% Computer_Science_and_STEM_fields ~ "Computer Science and STEM fields",
+           research_areas %in%  Social_Sciences_and_Communication ~ "Social Sciences and Communication",
+         research_areas %in% Art_and_Humanities ~ "Art and Humanities",
+         research_areas %in% Interdisciplinary_Social_Sciences_and_STEM_fields ~ "Interdisciplinary - Social Sciences and STEM fields",
+         TRUE ~ "Other"
+         )) 
+```
+
+```{r}
+research_areas_graph %>% 
+  add_row(research_areas = "Total", n = sum(.$n))
+```
+
+```{r}
+research_areas_graph %>% add_row(research_areas = "Total", n = sum(.$n))
+```
+
+```{r}
+write.csv(research_areas_graph2, file = "research_areas_clean.csv")
+```
+
+```{r}
+research_areas_clean_def <- read.csv("research_areas_clean_def.csv")
+```
+
+```{r}
+research_areas_clean_def %>% 
+  arrange(-n) %>% 
+  add_row(research_areas = "Total", n = sum(.$n)) %>% 
+  kable(caption = "Publicações por Área do Conhecimento", col.names = c("Área", "n"))
+```
+```{r}
+write.csv(research_areas_clean_def, "publi_research.csv")
+```
+
+```{r}
+publi <- research_areas_clean_def %>% 
+  ggplot() + 
+  geom_col(aes(x = research_areas, y = n, fill = research_areas)) +
+  ggtitle("Publications in Research Areas") +
+  theme(plot.title = element_text(size = 14, face = "bold", hjust = -0.6),
+        axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) +
+  labs(y = "", fill = "Research Areas")
+
+publi
+
+```
+```{r}
+ggsave("publications_in_research_areas.png")
+```
+
+
+só os artigos nas áreas:
+Social Sciences and Communication
+Interdisciplinary - Social Sciences and STEM fields
+
+```{r}
+only_social_sciences <- 
+  data_full %>% 
+  mutate(research_areas = 
+           case_when(
+             research_areas %in% Computer_Science_and_STEM_fields ~ "Computer Science and STEM fields",
+           research_areas %in%  Social_Sciences_and_Communication ~ "Social Sciences and Communication",
+         research_areas %in% Art_and_Humanities ~ "Art and Humanities",
+         research_areas %in% Interdisciplinary_Social_Sciences_and_STEM_fields ~ "Interdisciplinary - Social Sciences and STEM fields",
+         TRUE ~ "Other"
+         ))  %>% 
+filter(research_areas == "Social Sciences and Communication" | research_areas == "Interdisciplinary - Social Sciences and STEM fields")
+
+
+unique(only_social_sciences$research_areas)
+```
+
+#Só EM SOCIAIS
+
+
+3 - principais languages 
+```{r}
+languages_social_sciences <- 
+  only_social_sciences %>% 
+  group_by(language) %>% 
+  tally() %>% 
+  arrange(-n) %>% 
+  add_row(language = "Total", n = sum(.$n)) 
+```
+
+```{r}
+languages_social_sciences %>% 
+  kable(caption = "Languages of publications",
+        col.names = c("Language", "n"))
+
+write.csv(languages_social_sciences, "languages_social_sciences.csv")
+```
+
+Gráfico
+```{r}
+graph_social_sciences_lang <- 
+    only_social_sciences %>%
+  group_by(language) %>% 
+  tally() %>% 
+    ggplot() +
+geom_col(aes(x = language, y = n, fill = language)) +
+  ggtitle("Publication Languages in the Social Sciences") +
+  theme(plot.title = element_text(size = 14, face = "bold", hjust = -0.1),
+        axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) +
+  labs(y = "", fill = "Languages")
+
+graph_social_sciences_lang
+
+ggsave("graph_social_sciences_lang.png")
+```
+
+
+4- gráfico com os principais journals removendo essas publicações em russo croata e chinês
+
+```{r}
+only_social_sciences_en_pt_esp <- 
+  only_social_sciences %>% 
+  filter(language != "Chinese") %>% 
+  filter(language !=  "Croatian") %>% 
+  filter(language != "Russian")
+```
+
+```{r}
+only_social_sciences_top_sources <- 
+  only_social_sciences_en_pt_esp%>% 
+  group_by(source_title) %>% 
+  tally() %>% 
+  arrange(-n) %>% 
+  slice(1:10)
+```
+
+```{r}
+only_social_sciences_top_sources %>% 
+  kable(caption = "Main journals in the social sciences and communication", col.names = c("Journal", "n"))
+
+write.csv(only_social_sciences_top_sources, "only_social_sciences_top_sources.csv")
+```
+
+5 - Artigos com mais de 10 citações
+```{r}
+only_social_sciences_top10 <- 
+  only_social_sciences %>% 
+  filter(citations > 10)
+
+#PARA AC
+write.csv(only_social_sciences_top10, "para_analise_quali.csv")
+```
+
+
+6 - Keywords mais usadas em cada cluster
+essa vai dar mais trabalho pq vou ter que fazer text mining
+
+
+Wordcloud
+```{r}
+keywords <- only_social_sciences_top10$author_keywords
+
+words_to_remove <- c("social", "Social", "media", "Media", "Bots", "Bot", "bot", "bots", "online", "Online", "twitter", "Twitter")
+
+keywords2 <- removeWords(keywords,words_to_remove)
+
+keywords2 %>% 
+  wordcloud(min.freq = 3)
+	
+```
+
+
+```{r}
+only_social_sciences_top10_interdisc <- 
+    only_social_sciences_top10 %>% 
+    filter(research_areas == "Interdisciplinary - Social Sciences and STEM fields")
+
+keywords_interd <- only_social_sciences_top10_interdisc$author_keywords
+
+keywords_interd <- removeWords(keywords_interd, words_to_remove)
+    
+```
+
+
+CLUSTER ANALYSIS
+```{r}
+bibliographic <- read.csv("cluster/bots_ac_bibliographic_coupling.csv")
+```
+
+```{r}
+colnames(bibliographic)
+
+bibliographic2 <- 
+  bibliographic %>% 
+  select(Authors, Publication.Year, Source.Title, Conference.Title, Author.Keywords, Article.Title, Abstract, DOI, DOI.Link, Research.Areas, label, cluster, assunto.central.do.paper.TÍTULO)
+
+unique(bibliographic2$assunto.central.do.paper.TÍTULO)
+
+```
+
+```{r}
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+Stem’ as palavras Mais um passo de processamento é a padronização de variedades da mesma palavra - uma técnica que se chama ‘stemming’. Por exemplo, português tem milhares de conjugações de cada verbo: ‘saber’, ‘sei’, ‘soube’ etc. que significam o mesmo conceito. O que nos interessa é a raiz (o ‘stem’) consistente da palavra. Usamos a função stem_words() para adicionar mais uma coluna ao nosso tibble com a raiz das palavras, de novo especificando a língua apropriad
+
+
+Assis_palavras <- Assis_palavras %>% mutate(stem=stem_words(palavra, language="pt"))
+
+
+Tirar Maiúsculas: Também queremos ignorar se as palavras estão em letras minúsculas ou maiúsculas, e padronizar, por exemplo, para minúsculas. De novo, isso é o padrão de unnest_tokens(), mas podemos desligar se quisemos:
+
+Assis %>% unnest_tokens(palavra, text, to_lower=F)
+
+
+Quero fazer uma wordcloud melhorzinha
+Aí acabou
+
+
+```{r}
+
+airports %>% mutate(string_field=str_detect(name, "Field"))
+
+ group_by(string_field) %>%
+  tally()
+```
+
